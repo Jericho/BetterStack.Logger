@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>188dfd82-10c6-4dae-bdef-af7a62c5d3ce</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Formitable.BetterStack.Logger.Microsoft\Formitable.BetterStack.Logger.Microsoft.csproj" />
+  </ItemGroup>
+
+</Project>
