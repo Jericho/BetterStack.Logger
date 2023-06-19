@@ -96,10 +96,16 @@ public class BetterStackLogClientTests
         var expectedEndpoint = "https://test.dev.local";
         var expectedSourceToken = Guid.NewGuid().ToString();
 
-        var expectedLog = new BetterStackLogEnvelope("Test log", "Information", new Dictionary<string, object>
+        var expectedLog = new BetterStackLogEnvelope("Test log", "Information", new Dictionary<string, object>());
+
+        try
         {
-            { "Exception", new Exception("Test exception") }
-        });
+            throw new Exception("Test exception");
+        }
+        catch (Exception ex)
+        {
+            expectedLog.Metadata["Exception"] = ex;
+        }
 
         string? requestBody = null;
         var mockHttp = new MockHttpMessageHandler();
@@ -125,6 +131,6 @@ public class BetterStackLogClientTests
 
         // Assert
         mockHttp.VerifyNoOutstandingExpectation();
-        Assert.Equal($"[{{\"message\":\"Test log\",\"level\":\"Information\",\"metadata\":{{\"Exception\":{{\"targetSite\":null,\"message\":\"Test exception\",\"data\":{{}},\"innerException\":null,\"helpLink\":null,\"source\":null,\"hResult\":-2146233088,\"stackTrace\":null}}}},\"dt\":\"{expectedLog.Timestamp:yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz}\"}}]", requestBody);
+        Assert.Equal($"[{{\"message\":\"Test log\",\"level\":\"Information\",\"metadata\":{{\"Exception\":{{\"message\":\"Test exception\",\"data\":{{}},\"innerException\":null,\"helpLink\":null,\"source\":\"Formitable.BetterStack.Logger.Tests\",\"hResult\":-2146233088,\"stackTrace\":\"{(expectedLog.Metadata["Exception"] as Exception)?.StackTrace?.Replace("\\", "\\\\")}\"}}}},\"dt\":\"{expectedLog.Timestamp:yyyy-MM-ddTHH:mm:ss.FFFFFFFzzz}\"}}]", requestBody);
     }
 }

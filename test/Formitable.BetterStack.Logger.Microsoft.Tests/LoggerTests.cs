@@ -87,7 +87,14 @@ public class LoggerTests
             .Returns(Task.CompletedTask);
 
         // Act
-        _logger.LogError(new Exception("Test exception"), "Test error");
+        try
+        {
+            throw new Exception("Test exception");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Test error");
+        }
         await Task.Delay(100);
 
         // Assert

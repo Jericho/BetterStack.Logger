@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using Formitable.BetterStack.Logger.JsonConverters;
 using Polly;
 using Polly.Extensions.Http;
 using Polly.Retry;
@@ -31,6 +32,7 @@ public sealed class BetterStackLogClient : IBetterStackLogClient, IDisposable
         Converters =
         {
             new JsonStringEnumConverter(),
+            new JsonExceptionConverter(),
         },
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
@@ -61,6 +63,7 @@ public sealed class BetterStackLogClient : IBetterStackLogClient, IDisposable
     public async Task UploadAsync(IEnumerable<BetterStackLogEnvelope> logs, CancellationToken cancellationToken = default)
     {
         // Enrich each log event with client specific context
+        var serializedLogs = new List<string>();
         foreach (var log in logs)
         {
             foreach (var kv in _context)
@@ -70,16 +73,24 @@ public sealed class BetterStackLogClient : IBetterStackLogClient, IDisposable
 
             try
             {
-                JsonSerializer.Serialize(log, _serializerOptions);
+                var json = JsonSerializer.Serialize(log, _serializerOptions);
+                serializedLogs.Add(json);
             }
             catch
             {
-                var metadataValues = log.Metadata.Values.Select(v => (v?.GetType().Name ?? "null!", v)).ToArray();
+                // If the log entry cannot be serialized for any reason, strip the metadata to simple fields
+                foreach (var kv in log.Metadata.Where(kv => !kv.Value.GetType().IsPrimitive))
+                {
+                    log.Metadata.Remove(kv.Key);
+                }
+
+                var simpleJson = JsonSerializer.Serialize(log, _serializerOptions);
+                serializedLogs.Add(simpleJson);
             }
         }
 
-        var json = JsonSerializer.Serialize(logs, _serializerOptions);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var payload = $"[{string.Join(',', serializedLogs)}]";
+        var content = new StringContent(payload, Encoding.UTF8, "application/json");
         var response = await _policy.ExecuteAndCaptureAsync((ct) => _httpClient.PostAsync("/", content, ct), cancellationToken);
         response.Result.EnsureSuccessStatusCode();
     }
