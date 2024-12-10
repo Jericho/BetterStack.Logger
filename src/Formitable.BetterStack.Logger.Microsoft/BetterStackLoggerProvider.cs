@@ -50,52 +50,75 @@ internal sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExter
         }
     }
 
+    // This task runs continously until the cancellation token is canceled
     private async Task FlushQueue()
     {
         while (!_cancellationTokenSource.IsCancellationRequested)
         {
-            var limit = _currentConfig.BatchSize;
-            var batch = new List<BetterStackLogEnvelope>();
-
-            while (limit > 0 && _logQueue.TryTake(out var message))
-            {
-                batch.Add(message);
-                limit--;
-            }
-
-            if (batch.Any())
-            {
-                try
-                {
-                    await _client.UploadAsync(batch, _cancellationTokenSource.Token);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to upload logs to BetterStack: {ex.Message}");
-                }
-            }
-            else
+            int messagesFlushed = await FlushBatch().ConfigureAwait(false);
+            if (messagesFlushed == 0)
             {
                 await Task.Delay(_currentConfig.FlushFrequency, _cancellationTokenSource.Token);
             }
         }
     }
 
+    // This method uploads a batch of messages to betterstack.com
+    private async Task<int> FlushBatch()
+    {
+        var limit = _currentConfig.BatchSize;
+        var batch = new List<BetterStackLogEnvelope>();
+
+        while (limit > 0 && _logQueue.TryTake(out var message))
+        {
+            batch.Add(message);
+            limit--;
+        }
+
+        if (batch.Any())
+        {
+            try
+            {
+                await _client.UploadAsync(batch, _cancellationTokenSource.Token);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to upload logs to BetterStack: {ex.Message}");
+            }
+        }
+
+        return batch.Count;
+    }
+
     public void Dispose()
     {
         _loggers.Clear();
         _onChangeToken?.Dispose();
-        _cancellationTokenSource.Dispose();
 
+        // Stop "_flushTask" and pause briefly to ensure it completes
+        _cancellationTokenSource.Cancel();
+        Task.Delay(TimeSpan.FromMilliseconds(250));
+
+        // There's a possibility that some messages could still be in the queue. 
+        // Therefore we need to flush these remaining messages.
         try
         {
-            _flushTask.Wait(_currentConfig.FlushFrequency);
+            // Flush any remaining messages until the queue is empty
+            int batchCount = 0;
+            do
+            {
+                batchCount = FlushBatch().GetAwaiter().GetResult();
+            } while (batchCount > 0);
         }
         catch (TaskCanceledException)
         {
         }
         catch (AggregateException ex) when (ex.InnerExceptions.Count == 1 && ex.InnerExceptions[0] is TaskCanceledException)
         {
+        }
+        finally
+        {
+            _cancellationTokenSource.Dispose();
         }
     }
 
