@@ -58,7 +58,7 @@ internal sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExter
             int messagesFlushed = await FlushBatch().ConfigureAwait(false);
             if (messagesFlushed == 0)
             {
-                await Task.Delay(_currentConfig.FlushFrequency, _cancellationTokenSource.Token);
+                await Task.Delay(_currentConfig.FlushFrequency, _cancellationTokenSource.Token).ConfigureAwait(false);
             }
         }
     }
@@ -79,7 +79,7 @@ internal sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExter
         {
             try
             {
-                await _client.UploadAsync(batch, _cancellationTokenSource.Token);
+                await _client.UploadAsync(batch, _cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
