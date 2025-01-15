@@ -79,7 +79,7 @@ internal sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExter
         {
             try
             {
-                await _client.UploadAsync(batch, _cancellationTokenSource.Token).ConfigureAwait(false);
+                await _client.UploadAsync(batch, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
