@@ -79,6 +79,10 @@ internal sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExter
         {
             try
             {
+                // Cancellation.None on the following line might seem counterintuitive, but it's
+                // actually quite important. We want to ensure the upload of a given batch of
+                // messages completes sucessfully even when _cancellationTokenSource.Token is
+                // cancelled (which indicates that BetterStackLoggerProvider is being disposed).
                 await _client.UploadAsync(batch, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
