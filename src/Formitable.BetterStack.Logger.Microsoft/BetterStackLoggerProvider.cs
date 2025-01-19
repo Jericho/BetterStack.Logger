@@ -99,15 +99,16 @@ internal sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExter
         _loggers.Clear();
         _onChangeToken?.Dispose();
 
-        // Stop "_flushTask" and pause briefly to ensure it completes
+        // Stop "_flushTask" and wait for it completes
         _cancellationTokenSource.Cancel();
-        Task.Delay(TimeSpan.FromMilliseconds(250));
+        _flushTask.Wait(TimeSpan.FromMilliseconds(500));
 
-        // There's a possibility that some messages could still be in the queue. 
-        // Therefore we need to flush these remaining messages.
+        // There's a possibility the Task was stoped before the queue
+        // could be fully processed. Therefore we need to flush any
+        // remaining messages.
         try
         {
-            // Flush any remaining messages until the queue is empty
+            // Flush remaining messages until the queue is empty
             int batchCount = 0;
             do
             {
