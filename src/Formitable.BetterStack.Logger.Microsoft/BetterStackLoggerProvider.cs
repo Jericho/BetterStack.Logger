@@ -12,7 +12,7 @@ namespace Formitable.BetterStack.Logger.Microsoft;
 
 [UnsupportedOSPlatform("browser")]
 [ProviderAlias("BetterStack")]
-internal sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExternalScope
+public sealed class BetterStackLoggerProvider : ILoggerProvider, ISupportExternalScope
 {
     private readonly Task _flushTask;
     private readonly IBetterStackLogClient _client;
